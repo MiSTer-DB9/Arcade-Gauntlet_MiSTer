@@ -167,16 +167,38 @@ module emu
 	// 1 - D-/TX
 	// 2..6 - USR2..USR6
 	// Set USER_OUT to 1 to read from USER_IN.
-	input   [6:0] USER_IN,
-	output  [6:0] USER_OUT,
+	output  USER_OSD,
+	output  [1:0] USER_MODE,
+	input   [7:0] USER_IN,
+	output  [7:0] USER_OUT,
 
 	input         OSD_STATUS
 );
 
-///////// Default values for ports not used in this core /////////
+//JOY_DB9
+wire [15:0] joydb_1,joydb_2;
+wire        joydb_1ena,joydb_2ena;
+joydbmix joydbmix
+(
+  .CLK_JOY(CLK_50M),
+  .JOY_FLAG(status[31:29]),
+  .USER_IN(USER_IN),
+  .USER_OUT(USER_OUT),
+  .USER_MODE(USER_MODE),
+  .USER_OSD(USER_OSD),
+  .joydb_1ena(joydb_1ena),
+  .joydb_2ena(joydb_2ena),
+  .joydb_1(joydb_1),
+  .joydb_2(joydb_2)
+);
+wire [15:0]   joy0 = joydb_1ena ? {joydb_1[10],joydb_1[11]|(joydb_1[10]&joydb_1[5]),joydb_1[7:0]} : joy0_USB;
+wire [15:0]   joy1 = joydb_2ena ? {joydb_1[10],joydb_2[11]|(joydb_2[10]&joydb_2[5]),joydb_2[7:0]} : joydb_1ena ? joy0_USB : joy1_USB;
+wire [15:0]   joy2 = joydb_1ena ? joy0_USB : joydb_2ena ? joy1_USB : joy2_USB;
+wire [15:0]   joy3 = joydb_1ena ? joy1_USB : joydb_2ena ? joy2_USB : joy3_USB;
 
+///////// Default values for ports not used in this core /////////
 assign ADC_BUS  = 'Z;
-assign USER_OUT = '1;
+//assign USER_OUT = '1;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
@@ -220,10 +242,10 @@ assign LED_DISK = 0;
 assign LED_POWER = 0;
 assign BUTTONS = 0;
 
-wire [15:0] joy0;
-wire [15:0] joy1;
-wire [15:0] joy2;
-wire [15:0] joy3;
+wire [15:0] joy0_USB;
+wire [15:0] joy1_USB;
+wire [15:0] joy2_USB;
+wire [15:0] joy3_USB;
 
 wire [10:0] ps2_key;
 
@@ -254,6 +276,8 @@ localparam CONF_STR = {
 	"-;",
 	"O89,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+	"OUV,UserIO Joystick,Off,DB15,DB9;",
+	"OT,UserIO Players,1 Player,2 Players;",
 	"-;",
 	"DIP;",
 	"-;",
@@ -443,10 +467,11 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.ioctl_index(ioctl_index),
 	.ioctl_wait(ioctl_wait),
 
-	.joystick_0(joy0),
-	.joystick_1(joy1),
-	.joystick_2(joy2),
-	.joystick_3(joy3),
+	.joy_raw(joydb_1[5:0]),
+	.joystick_0(joy0_USB),
+	.joystick_1(joy1_USB),
+	.joystick_2(joy2_USB),
+	.joystick_3(joy3_USB),
 	.ps2_key(ps2_key)
 );
 
