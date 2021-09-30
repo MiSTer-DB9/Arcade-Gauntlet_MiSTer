@@ -175,13 +175,13 @@ module emu
 	input         OSD_STATUS
 );
 
-//JOY_DB9
+///////// Default values for ports not used in this core /////////
 wire [15:0] joydb_1,joydb_2;
 wire        joydb_1ena,joydb_2ena;
 joydbmix joydbmix
 (
   .CLK_JOY(CLK_50M),
-  .JOY_FLAG(status[31:29]),
+  .JOY_FLAG(status[63:61]),
   .USER_IN(USER_IN),
   .USER_OUT(USER_OUT),
   .USER_MODE(USER_MODE),
@@ -196,7 +196,6 @@ wire [15:0]   joy1 = joydb_2ena ? {joydb_1[10],joydb_2[11]|(joydb_2[10]&joydb_2[
 wire [15:0]   joy2 = joydb_1ena ? joy0_USB : joydb_2ena ? joy1_USB : joy2_USB;
 wire [15:0]   joy3 = joydb_1ena ? joy1_USB : joydb_2ena ? joy2_USB : joy3_USB;
 
-///////// Default values for ports not used in this core /////////
 assign ADC_BUS  = 'Z;
 //assign USER_OUT = '1;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
@@ -221,7 +220,7 @@ wire        hs, vs;
 reg  [ 7:0] sw[8];
 wire [ 3:0] r,g,b, gvid_I, gvid_R, gvid_G, gvid_B;
 wire [15:0] aud_l, aud_r;
-wire [31:0] status;
+wire [63:0] status;
 wire [ 1:0] buttons;
 wire        forced_scandoubler;
 wire        direct_video;
@@ -276,8 +275,8 @@ localparam CONF_STR = {
 	"-;",
 	"O89,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-	"OUV,UserIO Joystick,Off,DB15,DB9;",
-	"OT,UserIO Players,1 Player,2 Players;",
+	"oUV,UserIO Joystick,Off,DB15,DB9;",
+	"oT,UserIO Players,1 Player,2 Players;",
 	"-;",
 	"DIP;",
 	"-;",
