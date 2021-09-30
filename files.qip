@@ -61,4 +61,4 @@ set_global_assignment -name VHDL_FILE rtl/gauntlet/TG68K.vhd
 set_global_assignment -name VHDL_FILE rtl/gauntlet/TMS5220.vhd
 set_global_assignment -name VHDL_FILE rtl/gauntlet/VIDEO.vhd
 set_global_assignment -name VHDL_FILE rtl/gauntlet/VRAMS.vhd
-set_global_assignment -name VHDL_FILE rtl/gauntlet/gauntlet.vhd
+set_global_assignment -name VHDL_FILE rtl/gauntlet/GAUNTLET.vhd
