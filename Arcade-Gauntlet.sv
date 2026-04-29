@@ -172,31 +172,67 @@ module emu
 	// 2..6 - USR2..USR6
 	// Set USER_OUT to 1 to read from USER_IN.
 	output  USER_OSD,
-	output  [1:0] USER_MODE,
+	// [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: per-pin push-pull mask
+	output  [7:0] USER_PP,
+	// [MiSTer-DB9 END]
 	input   [7:0] USER_IN,
 	output  [7:0] USER_OUT,
 
 	input         OSD_STATUS
 );
 
+
+// [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: USER_PP default (port_batch replaces with USER_PP_DRIVE)
+assign USER_PP = USER_PP_DRIVE;
+// [MiSTer-DB9 END]
 ///////// Default values for ports not used in this core /////////
-wire [15:0] joydb_1,joydb_2;
-wire        joydb_1ena,joydb_2ena;
-joydbmix joydbmix
-(
-  .CLK_JOY(CLK_50M),
-  .JOY_FLAG(status[63:61]),
-  .USER_IN(USER_IN),
-  .USER_OUT(USER_OUT),
-  .USER_MODE(USER_MODE),
-  .USER_OSD(USER_OSD),
-  .joydb_1ena(joydb_1ena),
-  .joydb_2ena(joydb_2ena),
-  .joydb_1(joydb_1),
-  .joydb_2(joydb_2)
+// [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: joydb wrapper
+wire         CLK_JOY = CLK_50M;                 // Assign clock between 40-50Mhz
+wire   [1:0] joy_type        = status[127:126]; // 0=Off, 1=Saturn, 2=DB9MD, 3=DB15
+wire         joy_2p          = status[125];
+wire         joy_db9md_en    = (joy_type == 2'd2);
+wire         joy_db15_en     = (joy_type == 2'd3);
+wire         joy_any_en      = |joy_type;
+// Legacy 3-bit alias for fork-specific MT32 / SNAC fallback code. Non-canonical
+// RHS variants (ext_iec_en, mt32_disable) need a hand-port — alias is raw.
+wire   [2:0] JOY_FLAG        = {joy_db9md_en, joy_db15_en, joy_2p};
+// [MiSTer-DB9 END]
+
+// [MiSTer-DB9-Pro BEGIN] - Saturn key gate
+wire         saturn_unlocked;                   // driven by hps_io UIO_DB9_KEY (0xFE)
+// [MiSTer-DB9-Pro END]
+
+// [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: joydb wrapper wires + instance
+wire   [7:0] USER_OUT_DRIVE;
+wire   [7:0] USER_PP_DRIVE;
+wire  [15:0] joydb_1, joydb_2;
+wire         joydb_1ena, joydb_2ena;
+wire  [15:0] joy_raw_payload;
+
+joydb joydb (
+  .clk             ( CLK_JOY         ),
+  .USER_IN         ( USER_IN         ),
+  .joy_type        ( joy_type        ),
+  .joy_2p          ( joy_2p          ),
+  .saturn_unlocked ( saturn_unlocked ),
+  .USER_OUT_DRIVE  ( USER_OUT_DRIVE  ),
+  .USER_PP_DRIVE   ( USER_PP_DRIVE   ),
+  .USER_OSD        ( USER_OSD        ),
+  .joydb_1         ( joydb_1         ),
+  .joydb_2         ( joydb_2         ),
+  .joydb_1ena      ( joydb_1ena      ),
+  .joydb_2ena      ( joydb_2ena      ),
+  .joy_raw         ( joy_raw_payload )
 );
-wire [31:0]   joystick_0 = joydb_1ena ? {joydb_1[10],joydb_1[11]|(joydb_1[10]&joydb_1[5]),joydb_1[7:0]} : joystick_0_USB;
-wire [31:0]   joystick_1 = joydb_2ena ? {joydb_1[10],joydb_2[11]|(joydb_2[10]&joydb_2[5]),joydb_2[7:0]} : joydb_1ena ? joystick_0_USB : joystick_1_USB;
+
+assign USER_OUT = USER_OUT_DRIVE;
+// [MiSTer-DB9 END]
+// [MiSTer-DB9-Pro BEGIN] - DB controllers muted while OSD is open
+wire [31:0] joystick_0 = joydb_1ena ? (OSD_STATUS ? 32'b0 : {joydb_1[10],joydb_1[11]|(joydb_1[10]&joydb_1[5]),joydb_1[7:0]}) : joystick_0_USB;
+// [MiSTer-DB9-Pro END]
+// [MiSTer-DB9-Pro BEGIN] - DB controllers muted while OSD is open
+wire [31:0] joystick_1 = joydb_2ena ? (OSD_STATUS ? 32'b0 : {joydb_1[10],joydb_2[11]|(joydb_2[10]&joydb_2[5]),joydb_2[7:0]}) : joydb_1ena ? joystick_0_USB : joystick_1_USB;
+// [MiSTer-DB9-Pro END]
 wire [31:0]   joystick_2 = joydb_1ena ? joystick_0_USB : joydb_2ena ? joystick_1_USB : joystick_2_USB;
 wire [31:0]   joystick_3 = joydb_1ena ? joystick_1_USB : joydb_2ena ? joystick_2_USB : joystick_3_USB;
 
@@ -285,8 +321,10 @@ localparam CONF_STR = {
 	"-;",
 	"O01,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O24,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-	"oUV,UserIO Joystick,Off,DB15,DB9;",
-	"oT,UserIO Players,1 Player,2 Players;",
+		// [MiSTer-DB9-Pro BEGIN] - Saturn-first joy_type (canonical bit notation)
+	"O[127:126],UserIO Joystick,Off,Saturn,DB9MD,DB15;",
+	"O[125],UserIO Players, 1 Player,2 Players;",
+	// [MiSTer-DB9-Pro END]
 	"-;",
 	"h2OAB,Warrior,Joystick 1,Joystick 2,Joystick 3,Joystick 4;",
 	"h2OCD,Valkyrie,Joystick 2,Joystick 3,Joystick 4,Joystick 1;",
@@ -509,7 +547,12 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.ioctl_index(ioctl_index),
 	.ioctl_wait(ioctl_wait),
 	
-	.joy_raw(joydb_1[5:0]),
+	// [MiSTer-DB9 BEGIN] - DB9/SNAC8 support: joy_raw
+	.joy_raw(OSD_STATUS ? joy_raw_payload : 16'b0),
+	// [MiSTer-DB9 END]
+	// [MiSTer-DB9-Pro BEGIN] - Saturn key gate
+	.saturn_unlocked(saturn_unlocked),
+	// [MiSTer-DB9-Pro END]
 	
 	.joystick_0(joystick_0_USB),
 	.joystick_1(joystick_1_USB),
