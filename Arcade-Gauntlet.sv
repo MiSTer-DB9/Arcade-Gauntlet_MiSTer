@@ -231,7 +231,7 @@ assign USER_OUT = USER_OUT_DRIVE;
 wire [31:0] joystick_0 = joydb_1ena ? (OSD_STATUS ? 32'b0 : {joydb_1[10],joydb_1[11],joydb_1[7:0]}) : joystick_0_USB;
 // [MiSTer-DB9-Pro END]
 // [MiSTer-DB9-Pro BEGIN] - DB controllers muted while OSD is open
-wire [31:0] joystick_1 = joydb_2ena ? (OSD_STATUS ? 32'b0 : {joydb_1[10],joydb_2[11],joydb_2[7:0]}) : joydb_1ena ? joystick_0_USB : joystick_1_USB;
+wire [31:0] joystick_1 = joydb_2ena ? (OSD_STATUS ? 32'b0 : {joydb_2[10],joydb_2[11],joydb_2[7:0]}) : joydb_1ena ? joystick_0_USB : joystick_1_USB;
 // [MiSTer-DB9-Pro END]
 wire [31:0]   joystick_2 = joydb_1ena ? joystick_0_USB : joydb_2ena ? joystick_1_USB : joystick_2_USB;
 wire [31:0]   joystick_3 = joydb_1ena ? joystick_1_USB : joydb_2ena ? joystick_2_USB : joystick_3_USB;
